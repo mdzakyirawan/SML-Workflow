@@ -43,12 +43,11 @@ jobs:
         run: |
           echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
-          # Mencari path model secara rekursif dan memastikan path ditemukan
-          MODEL_PATH=$(find . -type d -name "model" | grep "artifacts/model" | head -n 1)
+          # Mencari direktori yang berisi file 'MLmodel'
+          MODEL_PATH=$(find MLProject/mlruns -name "MLmodel" -exec dirname {} \; | head -n 1)
 
           if [ -z "$MODEL_PATH" ]; then
-            echo "ERROR: MLflow model artifact not found"
-            ls -R # Menampilkan isi direktori untuk debug jika gagal
+            echo "ERROR: MLflow model artifact (MLmodel file) not found"
             exit 1
           fi
 
@@ -56,7 +55,6 @@ jobs:
 
           IMAGE_NAME="$DOCKER_USERNAME/workflow-ci-mlflow:latest"
           
-          # Gunakan path yang ditemukan secara dinamis
           mlflow models build-docker \
             -m "$MODEL_PATH" \
             --name "$IMAGE_NAME"
