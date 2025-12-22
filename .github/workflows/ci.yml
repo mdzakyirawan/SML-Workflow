@@ -29,16 +29,16 @@ jobs:
         unset MLFLOW_RUN_ID
         unset MLFLOW_ACTIVE_RUN_ID
 
-    - name: Run MLflow Project (Training)
+    - name: Run Training Script
       run: |
-        mlflow run MLProject --env-manager=local
+        cd MLProject
+        python modelling.py
 
     - name: Upload MLflow Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: mlflow-artifacts
-        path: "**/mlruns"
-        retention-days: 7
+        path: MLProject/mlruns
 
     - name: Build & Push Docker Image with MLflow
       env:
@@ -47,14 +47,7 @@ jobs:
       run: |
         echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
     
-        echo "Searching for MLflow model artifact..."
-    
-        MODEL_PATH=$(find . -type d -path "*/mlruns/*/*/artifacts/model" | head -n 1)
-    
-        if [ -z "$MODEL_PATH" ]; then
-          echo "ERROR: MLflow model artifact not found"
-          exit 1
-        fi
+        MODEL_PATH=$(find MLProject/mlruns -type d -path "*/artifacts/model" | head -n 1)
     
         echo "Found model at: $MODEL_PATH"
     
@@ -63,5 +56,3 @@ jobs:
           --name "$DOCKER_USERNAME/workflow-ci-mlflow"
     
         docker push "$DOCKER_USERNAME/workflow-ci-mlflow"
-
-
