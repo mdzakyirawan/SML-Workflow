@@ -1,67 +1,62 @@
-name: MLflow CI Pipeline
+name: Workflow CI - MLflow + Docker
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
-  train-and-build:
+  mlflow-ci:
     runs-on: ubuntu-latest
-
+    env:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-    - name: Set up Miniconda
-      uses: conda-incubator/setup-miniconda@v3
-      with:
-        auto-activate-base: false
-        activate-environment: mlflow-env
-        environment-file: MLProject/conda.yaml
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
 
-    - name: Install MLflow
-      run: |
-        pip install mlflow
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r MLProject/requirements.txt
+          pip install mlflow scikit-learn pandas
 
-    - name: Clear MLflow environment
-      run: |
-        unset MLFLOW_RUN_ID
-        unset MLFLOW_ACTIVE_RUN_ID
+      - name: Run MLflow Training Script
+        run: |
+          cd MLProject
+          python modelling.py
 
-    - name: Run Training Script
-      run: |
-        cd MLProject
-        python modelling.py
+      - name: Upload MLflow Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlflow-artifacts
+          path: MLProject/mlruns
+          retention-days: 7
 
-    - name: Upload MLflow Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: mlflow-artifacts
-        path: MLProject/mlruns
+      - name: Build & Push Docker Image
+        run: |
+          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
-    - name: Build & Push Docker Image with MLflow
-      env:
-        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      run: |
-        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-    
-        MODEL_PATH=$(find MLProject/mlruns -type d -path "*/artifacts/model" | head -n 1)
-    
-        if [ -z "$MODEL_PATH" ]; then
-          echo "ERROR: MLflow model artifact not found"
-          exit 1
-        fi
-    
-        echo "Found model at: $MODEL_PATH"
-    
-        # Ganti nama image jadi valid Docker format
-        IMAGE_NAME="$DOCKER_USERNAME/workflow-ci-mlflow:latest"
-        echo "Docker image name: $IMAGE_NAME"
-    
-        mlflow models build-docker \
-          -m "$MODEL_PATH" \
-          --name "$IMAGE_NAME"
-    
-        docker push "$IMAGE_NAME"
+          MODEL_PATH=$(find MLProject/mlruns -type d -path "*/artifacts/model" | head -n 1)
+
+          if [ -z "$MODEL_PATH" ]; then
+            echo "ERROR: MLflow model artifact not found"
+            exit 1
+          fi
+
+          echo "Found model at: $MODEL_PATH"
+
+          IMAGE_NAME="$DOCKER_USERNAME/workflow-ci-mlflow:latest"
+          echo "Docker image name: $IMAGE_NAME"
+
+          mlflow models build-docker \
+            -m "$MODEL_PATH" \
+            --name "$IMAGE_NAME"
+
+          docker push "$IMAGE_NAME"
