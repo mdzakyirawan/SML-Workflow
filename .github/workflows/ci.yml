@@ -46,11 +46,15 @@ jobs:
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       run: |
         echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-
-        MODEL_PATH=$(ls -d mlruns/*/*/artifacts/model | head -n 1)
-
+    
+        # Ambil run ID terakhir
+        RUN_ID=$(mlflow runs list --max-results 1 | awk 'NR==2 {print $1}')
+    
+        echo "Using RUN_ID=$RUN_ID"
+    
         mlflow models build-docker \
-          -m $MODEL_PATH \
-          -n $DOCKER_USERNAME/workflow-ci-mlflow
+          -m "runs:/$RUN_ID/model" \
+          --name "$DOCKER_USERNAME/workflow-ci-mlflow"
+    
+        docker push "$DOCKER_USERNAME/workflow-ci-mlflow"
 
-        docker push $DOCKER_USERNAME/workflow-ci-mlflow
