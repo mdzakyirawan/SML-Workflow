@@ -1,0 +1,45 @@
+name: MLflow CI Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  train-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Miniconda
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        auto-activate-base: false
+        activate-environment: mlflow-env
+        environment-file: MLProject/conda.yaml
+
+    - name: Install MLflow
+      run: |
+        pip install mlflow
+
+    - name: Run MLflow Project
+      run: |
+        mlflow run MLProject --env-manager=conda
+
+    - name: Upload MLflow artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: mlflow-artifacts
+        path: mlruns
+
+    - name: Build Docker Image with MLflow
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      run: |
+        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+        mlflow models build-docker \
+          -m mlruns/*/*/artifacts/model \
+          -n $DOCKER_USERNAME/workflow-ci-mlflow
+        docker push $DOCKER_USERNAME/workflow-ci-mlflow
