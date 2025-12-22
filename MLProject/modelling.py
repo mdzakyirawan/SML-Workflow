@@ -1,3 +1,4 @@
+import os
 import mlflow
 import mlflow.sklearn
 import pandas as pd
@@ -8,9 +9,11 @@ from sklearn.metrics import accuracy_score
 
 
 def main():
-    # 🔥 FORCE CLEAN STATE (CI SAFE)
-    mlflow.end_run()
+    # 🔥 RESET MLFLOW STATE (CI FIX)
+    if "MLFLOW_RUN_ID" in os.environ:
+        del os.environ["MLFLOW_RUN_ID"]
 
+    mlflow.end_run()
     mlflow.set_experiment("workflow-ci-experiment")
 
     with mlflow.start_run(run_name="ci-training"):
