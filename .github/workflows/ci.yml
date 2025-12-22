@@ -49,10 +49,19 @@ jobs:
     
         MODEL_PATH=$(find MLProject/mlruns -type d -path "*/artifacts/model" | head -n 1)
     
+        if [ -z "$MODEL_PATH" ]; then
+          echo "ERROR: MLflow model artifact not found"
+          exit 1
+        fi
+    
         echo "Found model at: $MODEL_PATH"
+    
+        # Ganti nama image jadi valid Docker format
+        IMAGE_NAME="$DOCKER_USERNAME/workflow-ci-mlflow:latest"
+        echo "Docker image name: $IMAGE_NAME"
     
         mlflow models build-docker \
           -m "$MODEL_PATH" \
-          --name "$DOCKER_USERNAME/workflow-ci-mlflow"
+          --name "$IMAGE_NAME"
     
-        docker push "$DOCKER_USERNAME/workflow-ci-mlflow"
+        docker push "$IMAGE_NAME"
