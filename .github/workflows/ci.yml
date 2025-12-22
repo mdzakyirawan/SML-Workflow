@@ -24,6 +24,11 @@ jobs:
       run: |
         pip install mlflow
 
+    - name: Clear MLflow environment
+      run: |
+        unset MLFLOW_RUN_ID
+        unset MLFLOW_ACTIVE_RUN_ID
+
     - name: Run MLflow Project (Training)
       run: |
         mlflow run MLProject --env-manager=local
