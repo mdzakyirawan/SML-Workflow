@@ -9,25 +9,26 @@ from sklearn.metrics import accuracy_score
 
 
 def main():
-    # Reset MLflow state (CI-safe)
+    # Reset MLflow state (CI safe)
     if "MLFLOW_RUN_ID" in os.environ:
         del os.environ["MLFLOW_RUN_ID"]
 
     mlflow.end_run()
+
+    mlflow.set_tracking_uri("file:./mlruns")
     mlflow.set_experiment("workflow-ci-experiment")
 
+    df = pd.read_csv("dataset_preprocessed.csv")
+
+    target_col = df.columns[-1]
+    X = df.drop(columns=[target_col])
+    y = df[target_col]
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
     with mlflow.start_run(run_name="ci-training"):
-        df = pd.read_csv("dataset_preprocessed.csv")
-
-        target_col = df.columns[-1]
-
-        X = df.drop(columns=[target_col])
-        y = df[target_col]
-
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42
-        )
-
         model = RandomForestClassifier(
             n_estimators=100,
             random_state=42
