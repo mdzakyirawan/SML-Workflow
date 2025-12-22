@@ -9,7 +9,7 @@ from sklearn.metrics import accuracy_score
 
 
 def main():
-    # 🔥 RESET MLFLOW STATE (CI FIX)
+    # Reset MLflow state (CI-safe)
     if "MLFLOW_RUN_ID" in os.environ:
         del os.environ["MLFLOW_RUN_ID"]
 
@@ -19,8 +19,10 @@ def main():
     with mlflow.start_run(run_name="ci-training"):
         df = pd.read_csv("dataset_preprocessed.csv")
 
-        X = df.drop("target", axis=1)
-        y = df["target"]
+        target_col = df.columns[-1]
+
+        X = df.drop(columns=[target_col])
+        y = df[target_col]
 
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42
@@ -35,6 +37,7 @@ def main():
         y_pred = model.predict(X_test)
         acc = accuracy_score(y_test, y_pred)
 
+        mlflow.log_param("target_column", target_col)
         mlflow.log_metric("accuracy", acc)
         mlflow.sklearn.log_model(model, artifact_path="model")
 
