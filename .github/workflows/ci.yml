@@ -47,14 +47,21 @@ jobs:
       run: |
         echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
     
-        # Ambil run ID terakhir
-        RUN_ID=$(mlflow runs list --max-results 1 | awk 'NR==2 {print $1}')
+        echo "Searching for MLflow model artifact..."
     
-        echo "Using RUN_ID=$RUN_ID"
+        MODEL_PATH=$(find . -type d -path "*/mlruns/*/*/artifacts/model" | head -n 1)
+    
+        if [ -z "$MODEL_PATH" ]; then
+          echo "ERROR: MLflow model artifact not found"
+          exit 1
+        fi
+    
+        echo "Found model at: $MODEL_PATH"
     
         mlflow models build-docker \
-          -m "runs:/$RUN_ID/model" \
+          -m "$MODEL_PATH" \
           --name "$DOCKER_USERNAME/workflow-ci-mlflow"
     
         docker push "$DOCKER_USERNAME/workflow-ci-mlflow"
+
 
