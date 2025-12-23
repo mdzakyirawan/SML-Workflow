@@ -24,7 +24,7 @@ X_train, X_test, y_train, y_test = train_test_split(
     stratify=y
 )
 
-mlflow.set_experiment("Eksperimen_Model_Pipeline")
+# mlflow.set_experiment("Eksperimen_Model_Pipeline")
 
 with mlflow.start_run():
 
