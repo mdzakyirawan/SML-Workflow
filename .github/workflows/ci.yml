@@ -29,8 +29,7 @@ jobs:
 
       - name: Run MLflow Training Script
         run: |
-          cd MLProject
-          python modelling.py
+          mlflow run MLproject
 
       - name: Upload MLflow Artifacts
         uses: actions/upload-artifact@v4
